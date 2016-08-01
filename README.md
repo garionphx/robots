@@ -7,6 +7,9 @@ To run it, execute (make sure you have a large terminal window):
 
     python game.py
 
+The robots run a program, stored in the "test.cpu" file. You can modify this 
+program however you want. Only a few opcodes available right now.
+
 The idea
 --------
 
