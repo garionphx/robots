@@ -6,5 +6,5 @@ LABEL hello             #
 FIRE                    # 6       
 CLEAR_BUMP              # 7       
 RIGHT                   # 8       
-RESET                   # 9       
+#RESET                   # 9       
 

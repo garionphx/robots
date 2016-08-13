@@ -82,6 +82,10 @@ class CPU(object):
     def inc_PC(self):
         self.PC += 1
 
+        # Implicit reset at end of memory
+        if self.PC >= len(self.memory):
+            self.PC = 0
+
     def branch_bump(self):
         print "branch bump", self.flags.bump
         if self.flags.bump:
