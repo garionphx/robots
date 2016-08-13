@@ -1,4 +1,6 @@
 from random import shuffle, randrange
+import copy
+
 from pprint import pprint
  
 class Pos(object):
@@ -8,6 +10,7 @@ class Pos(object):
         self.room_s = None
         self.room_e = None
         self.room_w = None
+        self.player = None
 
 class WorldPlayerController:
     def __init__(self, world, player):
@@ -16,7 +19,9 @@ class WorldPlayerController:
         self.pos = None
         while 1:
             # Pick a random spot in the maze
-            pos = self.world.world[randrange(len(self.world.world))][randrange(len(self.world.world[0]))]
+            rand_x = randrange(len(self.world.world) - 1)
+            rand_y = randrange(len(self.world.world[0]) - 1)
+            pos = self.world.world[rand_x][rand_y]
 
             # Is there someone else there?
             found = False
@@ -26,6 +31,7 @@ class WorldPlayerController:
                     break
             if not found:
                 self.pos = pos
+                self.pos.player = self
                 break
 
         self.direction = 'n'
@@ -34,6 +40,7 @@ class WorldPlayerController:
         self.player.set_forward(self.forward)
         self.player.set_left(self.left)
         self.player.set_right(self.right)
+        self.player.set_fire(self.fire)
 
     def step(self):
         self.player.step()
@@ -52,9 +59,13 @@ class WorldPlayerController:
         # bump detection
         if not new_room:
             self.player.bump()
-        elif any([(p.pos == new_room) for p in self.world.players]):
+        elif new_room.player is not None:
             self.player.bump()
         else:
+            # Move the player
+            self.pos.player = None
+            new_room.player = self
+
             self.pos = new_room
 
     def left(self):
@@ -72,6 +83,32 @@ class WorldPlayerController:
                 'w' : 'n'}
 
         self.direction = turn[self.direction]
+
+    def fire(self):
+        # get the 'room' we're firing at
+        fire = { 
+            'n' : self.pos.room_n,
+            's' : self.pos.room_s,
+            'e' : self.pos.room_e,
+            'w' : self.pos.room_w
+            }
+
+        fire_room = fire[self.direction]
+
+        if fire_room and fire_room.player is not None:
+            fire_room.player.hit()
+
+    def hit(self):
+        self.player.hit()
+
+        if not self.player.is_alive():
+            # Kill player
+            self.pos.player = None
+            self.world.players.remove(self)
+
+    def is_alive(self):
+        return self.player.is_alive()
+
 
 class World(object):
     def __init__(self, w, h):
@@ -171,14 +208,19 @@ class World(object):
         # Line 3, s
         for pos in row[:-1]:
             s += "+-"
-        s += '+\n'
+        s += '+'
 
         return s
 
     def step(self):
-        shuffle(self.players)
-        for player in self.players:
-            player.step()
+        # copy the list of players
+        players = copy.copy(self.players)
+
+        shuffle(players)
+        for player in players:
+            # is the player still alive?
+            if player.is_alive():
+                player.step()
 
  
 if __name__ == '__main__':

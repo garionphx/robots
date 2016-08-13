@@ -27,11 +27,13 @@ class Flags(object):
     def __init__(self):
         self.bump = False
 
+    def reset(self):
+        self.bump = False
+
 
 class OpCode(object):
-    def __init__(self, size, cycles, func = None):
+    def __init__(self, cycles, func = None):
         self.func = func
-        self.size = size
         self.cycles = cycles
 
         self._data = None
@@ -49,74 +51,87 @@ class OpCode(object):
         if self._cycle_count == self.cycles:
             self._cycle_count = 0
             if self.func:
-                if self._data:
-                    self.func(self, self._data)
-                else:
-                    self.func(self)
+                self.func()
 
+class CPUFault(Exception):
+    pass
 
 class CPU(object):
 
-    def __init__(self, program_file):
-        self.program_file = program_file
-
+    def __init__(self, memory):
         self.PC = 0
         self.flags = Flags()
-        self.memory = []
+        self.memory = memory
         self.flag_set = False
 
-        # Set up the op codes
-        self.opcodes = {
-            'FORWARD'       : OpCode(1, 1, self.forward),
-            'LEFT'          : OpCode(1, 1, self.left),
-            'RIGHT'         : OpCode(1, 1, self.right),
-            'BRANCH_BUMP'   : OpCode(2, 1, self.branch_bump),
-            'JUMP'          : OpCode(2, 1, self.jump),
-            'RESET'         : OpCode(1, 1, self.reset),
-            } 
+        self.instructionset = ( OpCode(1, self.forward),
+                                OpCode(1, self.left),      
+                                OpCode(1, self.right),     
+                                OpCode(1, self.branch_bump),
+                                OpCode(1, self.clear_bump),
+                                OpCode(1, self.jump),      
+                                OpCode(1, self.reset),     
+                                OpCode(1, self.fire),
+                              )
 
-    def reset_flags(self):
-        if not self.flag_set:
-            self.flags.bump = False
+        self._fire_callback =       None
+        self._forward_callback =    None
+        self._right_callback =      None
+        self._left_callback =       None
 
-        self.flag_set = False
+    def inc_PC(self):
+        self.PC += 1
 
-    def branch_bump(self, opcode, data):
+    def branch_bump(self):
+        print "branch bump", self.flags.bump
         if self.flags.bump:
-            self.PC += data[0]
-        else:
-            self.PC += opcode.size
+            # Get the data in the next memory location
+            branch_amount = self.memory[self.PC + 1]
 
-        self.reset_flags()
+            if branch_amount < -128 or branch_amount > 127:
+                raise CPUFault("branch out of range %d:%d" % (self.PC, branch_amount))
 
-    def jump(self, opcode, data):
-        self.PC += data[0]
-        self.reset_flags()
+            # do the jump, but -1 because we'll inc the PC counter when we exit this.
+            self.PC += (branch_amount - 1)
 
-    def reset(self, opcode):
-        self.PC = 0
-        self.reset_flags()
+    def clear_bump(self):
+        print "clear_bump"
+        self.flags.bump = False
 
-    def forward(self, opcode):
+    def jump(self):
+        print "jump"
+        branch_amount = self.memory[self.PC + 1]
+
+        if branch_amount < -128 or branch_amount > 127:
+            raise CPUFault("branch out of range %d:%d" % (self.PC, branch_amount))
+
+        # do the jump, but -1 because we'll inc the PC counter when we exit this.
+        self.PC += (branch_amount - 1)
+
+    def reset(self):
+        print "reset"
+        self.PC = -1 # Because we'll inv the PC when we exit this
+        self.flags.reset()
+
+    def forward(self):
+        print "for"
         if self._forward_callback:
             self._forward_callback()
 
-        self.PC += opcode.size
-        self.reset_flags()
-
-    def left(self, opcode):
+    def left(self):
+        print "left"
         if self._left_callback:
             self._left_callback()
 
-        self.PC += opcode.size
-        self.reset_flags()
-
-    def right(self, opcode):
+    def right(self):
+        print "right"
         if self._right_callback:
             self._right_callback()
 
-        self.PC += opcode.size
-        self.reset_flags()
+    def fire(self):
+        print "fire!!!!!!!!!!!!!!"
+        if self._fire_callback:
+            self._fire_callback()
 
     def set_forward_callback(self, func):
         self._forward_callback = func
@@ -127,87 +142,66 @@ class CPU(object):
     def set_left_callback(self, func):
         self._left_callback = func
 
+    def set_fire_callback(self, func):
+        self._fire_callback = func
+
     def set_bump(self,value):
         self.flags.bump = value
-        self.flag_set = True
-
-
-    def compile(self):
-        with open(self.program_file, 'r') as f:
-            lines = f.readlines()
-
-        for line in lines:
-            for opcode in self.opcodes:
-                if line.startswith(opcode):
-                    data = line.split(' ')
-
-                    # Store the opcode in memory
-                    self.memory.append(self.opcodes[opcode])
-
-                    # If we have a size, store that too
-                    if self.opcodes[opcode].size == len(data):
-                        self.memory += [ int(i) for i in data[1:]]
 
     def step(self):
-        opcode = self.memory[self.PC]
-
-        if opcode.size > 0:
-            opcode.set_data(self.memory[self.PC + 1 : self.PC + opcode.size])
-
+        opcode = self.instructionset[self.memory[self.PC]]
         opcode.step()
-
-
+        self.inc_PC()
 
 if __name__ == '__main__':
     def forward():
-        print "FORWARD"
+        print("FORWARD")
 
     def left():
-        print "LEFT"
+        print("LEFT")
 
     def right():
-        print "RIGHT"
+        print("RIGHT")
 
-    cpu = CPU("test.cpu")
+    old = False
+    if old:
+        cpu = CPU("test.cpu")
 
-    # Hook up the IO
-    cpu.set_forward_callback(forward)
-    cpu.set_right_callback(right)
-    cpu.set_left_callback(left)
+        # Hook up the IO
+        cpu.set_forward_callback(forward)
+        cpu.set_right_callback(right)
+        cpu.set_left_callback(left)
 
-    cpu.compile()
+        cpu.compile()
 
-    print cpu.PC
-    cpu.step()      # FORWARD
+        print(cpu.PC)
+        cpu.step()      # FORWARD
 
-    print cpu.PC
-    cpu.step()      # BRANCH_BUMP
+        print(cpu.PC)
+        cpu.step()      # BRANCH_BUMP
 
-    print cpu.PC
-    cpu.step()      # JUMP
+        print(cpu.PC)
+        cpu.step()      # JUMP
 
-    print cpu.PC
-    cpu.step()      # FORWARD
+        print(cpu.PC)
+        cpu.step()      # FORWARD
 
-    print cpu.PC
-    cpu.set_bump(True)
-    cpu.step()      # BRANCH_BUMP
+        print(cpu.PC)
+        cpu.set_bump(True)
+        cpu.step()      # BRANCH_BUMP
 
-    print cpu.PC
-    cpu.step()      # RIGHT
+        print(cpu.PC)
+        cpu.step()      # RIGHT
 
-    print cpu.PC
-    cpu.step()      # RESET
+        print(cpu.PC)
+        cpu.step()      # RESET
 
-    print cpu.PC
-    cpu.step()      # FORWARD
+        print(cpu.PC)
+        cpu.step()      # FORWARD
 
-
-
-
-
-
-
-
-
-
+    else:
+        import assembler
+        asm = assembler.Assembler()
+        mem = asm.compiler("test.cpu")
+        cpu = CPU(mem)
+        cpu.run()

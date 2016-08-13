@@ -1,6 +1,10 @@
-FORWARD
-BRANCH_BUMP +4
-LEFT
-RESET
-RIGHT
-RESET
+FORWARD                 # 0       
+BRANCH_BUMP hello       # 2 3     
+LEFT                    # 4       
+RESET                   # 5       
+LABEL hello             #         
+FIRE                    # 6       
+CLEAR_BUMP              # 7       
+RIGHT                   # 8       
+RESET                   # 9       
+

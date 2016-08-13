@@ -1,16 +1,20 @@
 #!/usr/bin/env python
 
+import assembler
 import cpu
 
 class Player(object):
-    def __init__(self, program):
-        self.cpu = cpu.CPU(program)
-        self.cpu.compile()
+    def __init__(self, program, hitpoints):
+        asm = assembler.Assembler()
+        self.cpu = cpu.CPU(asm.compile(program))
+
+        self.hitpoints = hitpoints
 
         # Hook up the io
         self.cpu.set_forward_callback(self.forward)
         self.cpu.set_left_callback(self.left)
         self.cpu.set_right_callback(self.right)
+        self.cpu.set_fire_callback(self.fire)
 
     def set_forward(self, forward):
         self._forward = forward
@@ -27,8 +31,21 @@ class Player(object):
     def left(self):
         self._left()
 
+    def set_fire(self, fire):
+        self._fire = fire
+    def fire(self):
+        self._fire()
+
     def bump(self):
         self.cpu.set_bump(True)
 
+    def hit(self):
+        self.hitpoints -= 1
+
     def step(self):
-        self.cpu.step()
+        if self.hitpoints > 0:
+            self.cpu.step()
+
+    def is_alive(self):
+        return self.hitpoints > 0
+
