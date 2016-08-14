@@ -1,10 +1,44 @@
-from random import shuffle, randrange
+from random import shuffle, randrange, randint
 import copy
 
 from pprint import pprint
+
+RED         = '\033[31m'
+GREEN       = '\033[32m'
+ORANGE      = '\033[33m'
+BLUE        = '\033[34m'
+PURPLE      = '\033[35m'
+CYAN        = '\033[36m'
+LIGHTGREY   = '\033[37m'
+DARKGREY    = '\033[90m'
+LIGHTRED    = '\033[91m'
+LIGHTGREEN  = '\033[92m'
+YELLOW      = '\033[93m'
+LIGHTBLUE   = '\033[94m'
+PINK        = '\033[95m'
+LIGHTCYAN   = '\033[96m'
+END         = '\033[0m'
+
+colors = [
+    RED,
+    GREEN,     
+    ORANGE,    
+    BLUE,      
+    PURPLE,    
+    CYAN,      
+    DARKGREY,  
+    LIGHTRED,  
+    LIGHTGREEN,
+    YELLOW,    
+    LIGHTBLUE, 
+    PINK,      
+    LIGHTCYAN, 
+    ]
  
 class Pos(object):
-    def __init__(self, visited):
+    def __init__(self, visited, x, y):
+        self.x = x
+        self.y = y
         self.visited = visited
         self.room_n = None
         self.room_s = None
@@ -13,10 +47,15 @@ class Pos(object):
         self.player = None
 
 class WorldPlayerController:
-    def __init__(self, world, player):
+    def __init__(self, world, player, name):
         self.player = player
+        self.name = name
         self.world = world
         self.pos = None
+        self.color = colors[randint(0, len(colors) - 1)]
+        self.distance_travelled = 0
+        self.hits = 0
+
         while 1:
             # Pick a random spot in the maze
             rand_x = randrange(len(self.world.world) - 1)
@@ -68,6 +107,8 @@ class WorldPlayerController:
 
             self.pos = new_room
 
+            self.distance_travelled += 1
+
     def left(self):
         turn = {'n' : 'w',
                 'w' : 's',
@@ -97,6 +138,7 @@ class WorldPlayerController:
 
         if fire_room and fire_room.player is not None:
             fire_room.player.hit()
+            self.hits += 1
 
     def hit(self):
         self.player.hit()
@@ -117,7 +159,7 @@ class World(object):
 
     def make_maze(self, w = 16, h = 8):
 
-        vis = [ [Pos(False) for _ in range(h)] + [Pos(True)] for _ in range(w)] + [[Pos(True) for _ in range(h + 1)]]
+        vis = [ [Pos(False, x, y) for y in range(h)] + [Pos(True, x, y)] for x in range(w)] + [[Pos(True, x, y) for _ in range(h + 1)]]
 
         def walk(x, y):
 
@@ -160,8 +202,8 @@ class World(object):
 
         return vis
 
-    def add_player(self, player):
-        self.players.append(WorldPlayerController(self, player))
+    def add_player(self, name, player):
+        self.players.append(WorldPlayerController(self, player, name))
 
     def draw(self):
         dir_chars = {
@@ -198,7 +240,7 @@ class World(object):
                 for player in self.players:
                     if player.pos == pos:
                         p = True
-                        s += dir_chars[player.direction]
+                        s += player.color + dir_chars[player.direction] + END
 
                 if not p:
                     s += " "

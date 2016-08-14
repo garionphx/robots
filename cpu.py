@@ -82,12 +82,7 @@ class CPU(object):
     def inc_PC(self):
         self.PC += 1
 
-        # Implicit reset at end of memory
-        if self.PC >= len(self.memory):
-            self.PC = 0
-
     def branch_bump(self):
-        print "branch bump", self.flags.bump
         if self.flags.bump:
             # Get the data in the next memory location
             branch_amount = self.memory[self.PC + 1]
@@ -99,11 +94,9 @@ class CPU(object):
             self.PC += (branch_amount - 1)
 
     def clear_bump(self):
-        print "clear_bump"
         self.flags.bump = False
 
     def jump(self):
-        print "jump"
         branch_amount = self.memory[self.PC + 1]
 
         if branch_amount < -128 or branch_amount > 127:
@@ -113,27 +106,22 @@ class CPU(object):
         self.PC += (branch_amount - 1)
 
     def reset(self):
-        print "reset"
         self.PC = -1 # Because we'll inv the PC when we exit this
         self.flags.reset()
 
     def forward(self):
-        print "for"
         if self._forward_callback:
             self._forward_callback()
 
     def left(self):
-        print "left"
         if self._left_callback:
             self._left_callback()
 
     def right(self):
-        print "right"
         if self._right_callback:
             self._right_callback()
 
     def fire(self):
-        print "fire!!!!!!!!!!!!!!"
         if self._fire_callback:
             self._fire_callback()
 
@@ -153,6 +141,10 @@ class CPU(object):
         self.flags.bump = value
 
     def step(self):
+        if self.PC < 0 or self.PC >= len(self.memory):
+            self.PC = 0
+            self.flags.reset()
+
         opcode = self.instructionset[self.memory[self.PC]]
         opcode.step()
         self.inc_PC()

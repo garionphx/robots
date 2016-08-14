@@ -1,0 +1,118 @@
+<head>
+    <script   src="https://code.jquery.com/jquery-3.1.0.min.js"   integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s="   crossorigin="anonymous"></script>
+    <script type="text/javascript">
+
+    function drawLine(ctx, x1, y1, x2, y2) {
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+    }
+
+    function drawCallback(data) {
+        var canvas = document.getElementById('game_board');
+        if (canvas.getContext){
+            var ctx = canvas.getContext('2d');
+
+            for(x = 0; x < data.length; x++)
+            {
+                for(y = 0; y < data[x].length; y++)
+                {
+                    // north
+                    if ( !data[x][y]['n'] )
+                    {
+                        drawLine(ctx, x*50, y*50, (x+1)*50, y*50);
+                    }
+
+                    // south
+                    if ( !data[x][y]['s'] )
+                    {
+                        drawLine(ctx, x*50, (y+1)*50, (x+1)*50, (y+1)*50);
+                    }
+
+                    // east
+                    if ( !data[x][y]['e'] )
+                    {
+                        drawLine(ctx, (x+1)*50, y*50, (x+1)*50, (y+1)*50);
+                    }
+
+                    // west
+                    if ( !data[x][y]['w'] )
+                    {
+                        drawLine(ctx, x*50, y*50, x*50, (y+1)*50);
+                    }
+                }
+            }
+            ctx.stroke();
+        }
+    }
+
+    function playersCallback(data) {
+        var canvas = document.getElementById('player_board');
+        if (canvas.getContext) {
+            var ctx = canvas.getContext('2d');
+            ctx.clearRect(0,0,500,500);
+
+            ctx.beginPath()
+            for (i = 0; i < data.length; i++)
+            {
+                player = data[i];
+                x = player['x']*50;
+                y = player['y']*50;
+
+                ctx.strokeRect(x + 5, y + 5, 40, 40);
+
+                switch(player['dir'])
+                {
+                case 'n':
+                    drawLine(ctx, 
+                             x + 25, y + 25, 
+                             x + 25, y);
+                    drawLine(ctx, 
+                             x + 26, y + 25, 
+                             x + 26, y);
+                    break;
+                case 'e':
+                    drawLine(ctx, 
+                             x + 25, y + 25, 
+                             x + 50, y + 25);
+                    drawLine(ctx, 
+                             x + 25, y + 26, 
+                             x + 50, y + 26);
+                    break;
+                case 'w':
+                    drawLine(ctx, 
+                             x + 25, y + 25, 
+                             x, y + 25);
+                    drawLine(ctx, 
+                             x + 25, y + 26, 
+                             x, y + 26);
+                    break;
+                case 's':
+                    drawLine(ctx,
+                             x + 25, y + 25, 
+                             x + 25, y + 50);
+                    drawLine(ctx,
+                             x + 26, y + 25, 
+                             x + 26, y + 50);
+                    break;
+                }
+            }
+            ctx.stroke();
+            ctx.closePath();
+        }
+    }
+
+    function draw() {
+        $.getJSON("/board", drawCallback);
+        $.getJSON("/players", playersCallback);
+
+        window.setInterval(function(){
+            $.get("/step");
+            $.getJSON("/players", playersCallback);
+            }, 250)
+    }
+    </script>
+    <body onload="draw();">
+        <canvas id="game_board" width="500" height="500" style="position: absolute; left: 20; top: 20; z-index: 0;"></canvas>
+        <canvas id="player_board" width="500" height="500" style="position: absolute; left: 20; top: 20; z-index: 1;"></canvas>
+    </body>
+</head>
