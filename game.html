@@ -1,6 +1,11 @@
 <head>
-    <script   src="https://code.jquery.com/jquery-3.1.0.min.js"   integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s="   crossorigin="anonymous"></script>
+    <script   src="https://code.jquery.com/jquery-3.1.0.min.js"   integrity="shamidsize6-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s="   crossorigin="anonymous"></script>
     <script type="text/javascript">
+
+    var width = 0;
+    var height = 0;
+    var bsize = 20;
+    var midsize = bsize/2;
 
     function drawLine(ctx, x1, y1, x2, y2) {
         ctx.moveTo(x1, y1);
@@ -9,35 +14,37 @@
 
     function drawCallback(data) {
         var canvas = document.getElementById('game_board');
+        width = canvas.width = data[0]*bsize;
+        height = canvas.height = data[1]*bsize;
         if (canvas.getContext){
             var ctx = canvas.getContext('2d');
 
-            for(x = 0; x < data.length; x++)
+            for(x = 0; x < data[2].length; x++)
             {
-                for(y = 0; y < data[x].length; y++)
+                for(y = 0; y < data[2][x].length; y++)
                 {
                     // north
-                    if ( !data[x][y]['n'] )
+                    if ( !data[2][x][y]['n'] )
                     {
-                        drawLine(ctx, x*50, y*50, (x+1)*50, y*50);
+                        drawLine(ctx, x*bsize, y*bsize, (x+1)*bsize, y*bsize);
                     }
 
                     // south
-                    if ( !data[x][y]['s'] )
+                    if ( !data[2][x][y]['s'] )
                     {
-                        drawLine(ctx, x*50, (y+1)*50, (x+1)*50, (y+1)*50);
+                        drawLine(ctx, x*bsize, (y+1)*bsize, (x+1)*bsize, (y+1)*bsize);
                     }
 
                     // east
-                    if ( !data[x][y]['e'] )
+                    if ( !data[2][x][y]['e'] )
                     {
-                        drawLine(ctx, (x+1)*50, y*50, (x+1)*50, (y+1)*50);
+                        drawLine(ctx, (x+1)*bsize, y*bsize, (x+1)*bsize, (y+1)*bsize);
                     }
 
                     // west
-                    if ( !data[x][y]['w'] )
+                    if ( !data[2][x][y]['w'] )
                     {
-                        drawLine(ctx, x*50, y*50, x*50, (y+1)*50);
+                        drawLine(ctx, x*bsize, y*bsize, x*bsize, (y+1)*bsize);
                     }
                 }
             }
@@ -46,53 +53,65 @@
     }
 
     function playersCallback(data) {
+        if(0 == width || 0 == height) return;
+
         var canvas = document.getElementById('player_board');
+        var game_canvas = document.getElementById('game_board');
+
+        var rect = game_canvas.getBoundingClientRect();
+
+        canvas.style.position = "absolute";
+        canvas.style.top =  rect.top;
+        canvas.style.left = rect.left;
+
+        canvas.width = width*bsize;
+        canvas.height = height*bsize;
         if (canvas.getContext) {
             var ctx = canvas.getContext('2d');
-            ctx.clearRect(0,0,500,500);
+            ctx.clearRect(0,0,width*bsize,height*bsize);
 
             ctx.beginPath()
             for (i = 0; i < data.length; i++)
             {
                 player = data[i];
-                x = player['x']*50;
-                y = player['y']*50;
+                x = player['x']*bsize;
+                y = player['y']*bsize;
 
-                ctx.strokeRect(x + 5, y + 5, 40, 40);
+                ctx.strokeRect(x + (bsize/10), y + (bsize/10), bsize * .7, bsize * .7);
 
                 switch(player['dir'])
                 {
                 case 'n':
                     drawLine(ctx, 
-                             x + 25, y + 25, 
-                             x + 25, y);
+                             x + midsize, y + midsize, 
+                             x + midsize, y);
                     drawLine(ctx, 
-                             x + 26, y + 25, 
-                             x + 26, y);
+                             x + midsize + 1, y + midsize, 
+                             x + midsize + 1, y);
                     break;
                 case 'e':
                     drawLine(ctx, 
-                             x + 25, y + 25, 
-                             x + 50, y + 25);
+                             x + midsize, y + midsize, 
+                             x + bsize, y + midsize);
                     drawLine(ctx, 
-                             x + 25, y + 26, 
-                             x + 50, y + 26);
+                             x + midsize, y + midsize + 1, 
+                             x + bsize, y + midsize + 1);
                     break;
                 case 'w':
                     drawLine(ctx, 
-                             x + 25, y + 25, 
-                             x, y + 25);
+                             x + midsize, y + midsize, 
+                             x, y + midsize);
                     drawLine(ctx, 
-                             x + 25, y + 26, 
-                             x, y + 26);
+                             x + midsize, y + midsize + 1, 
+                             x, y + midsize + 1);
                     break;
                 case 's':
                     drawLine(ctx,
-                             x + 25, y + 25, 
-                             x + 25, y + 50);
+                             x + midsize, y + midsize, 
+                             x + midsize, y + bsize);
                     drawLine(ctx,
-                             x + 26, y + 25, 
-                             x + 26, y + 50);
+                             x + midsize + 1, y + midsize, 
+                             x + midsize + 1, y + bsize);
                     break;
                 }
             }
@@ -108,11 +127,50 @@
         window.setInterval(function(){
             $.get("/step");
             $.getJSON("/players", playersCallback);
-            }, 250)
+            }, 100)
     }
     </script>
+
+    <style>
+    .main {
+        float: left;
+        display: table;
+    }
+    .row {
+        display: table-row;
+    }
+
+    .game {
+        display: table-cell;
+    }
+    .scoreboard {
+        float: left;
+        width: 100px;
+        display: table-cell;
+    }
+.pValue
+{
+    border: 2px solid #a0a0a0;
+    border-radius: 10px;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    text-align: center;
+    font: bold 28pt Calibri;
+}
+    </style>
+
     <body onload="draw();">
-        <canvas id="game_board" width="500" height="500" style="position: absolute; left: 20; top: 20; z-index: 0;"></canvas>
-        <canvas id="player_board" width="500" height="500" style="position: absolute; left: 20; top: 20; z-index: 1;"></canvas>
+    <div class="main">
+        <div class="row">
+            <div class="game">
+                <canvas class="gameboard" id="game_board" style="z-index: 0;"></canvas>
+                <canvas class="gameboard" id="player_board" style="z-index: 1;"></canvas>
+            </div>
+            <div class="scoreboard">
+                <div class="pValue" style="background: #606060">hello world</div>
+            </div>
+        </div>
+    </div>
     </body>
 </head>

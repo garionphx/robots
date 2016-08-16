@@ -27,6 +27,8 @@ class Game(object):
 
 class WebGame(BaseHTTPServer.BaseHTTPRequestHandler):
     def __init__(self, w = 10, h = 10):
+        self.w = w
+        self.h = h
         self.world = world.World(w = w, h = h)
 
         for i in range(3):
@@ -105,7 +107,8 @@ class WebGameHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        self.wfile.write(self.json_repr(game.getWorld()))
+        data = (game.w, game.h, game.getWorld())
+        self.wfile.write(self.json_repr(data))
 
     def players(self):
         self.send_response(200)
@@ -129,7 +132,7 @@ class WebGameHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 
 
-game = WebGame(10,10)
+game = WebGame(15,15)
 if __name__ == '__main__':
     import time
 
