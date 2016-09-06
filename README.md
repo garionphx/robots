@@ -7,8 +7,15 @@ To run it, execute (make sure you have a large terminal window):
 
     python game.py
 
-The robots run a program, stored in the "test.cpu" file. You can modify this 
-program however you want. Only a few opcodes available right now.
+Now open a web-browser, and point it to http://localhost:8000. Click on "Reset 
+Game", then "Add Player" a couple times. Hit the play button to start the game.
+
+The "Player" robots are executing a program, coded in the "test"cpu" file. Its
+a simple implementation of "left hand rule" for going through the maze. If it 
+bumps into anything, the robot fires it's weapon.
+
+The "Random Player" are randomly generated code for the robots to execute. Most
+of the time, they dont do much. But once in a while you'll get a creative one.
 
 The idea
 --------
