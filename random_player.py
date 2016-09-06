@@ -15,7 +15,6 @@ class RandomPlayer(player_base.PlayerBase):
             opcode = random.randint(0, len(assembler.reverse_map) - 1)
             self.memory.append(opcode)
 
-
             #  if its a branching opcode, select a range to jump
             if isinstance(assembler.reverse_map[opcode][1], assembler.BranchInstruction):
                 jumplength = random.randint(-128, 127)

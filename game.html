@@ -1,11 +1,27 @@
+<!DOCTYPE html>
+<html>
 <head>
-    <script   src="https://code.jquery.com/jquery-3.1.0.min.js"   integrity="shamidsize6-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s="   crossorigin="anonymous"></script>
-    <script type="text/javascript">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    var width = 0;
-    var height = 0;
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
+    <!-- jQuery library -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+
+    <!-- Latest compiled JavaScript -->
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+    <script type="text/javascript">
+    var width = 100;
+    var height = 100;
     var bsize = 20;
     var midsize = bsize/2;
+    var gameboard = null;
+    var play = false;
+    var curr_players = [];
 
     function drawLine(ctx, x1, y1, x2, y2) {
         ctx.moveTo(x1, y1);
@@ -13,12 +29,19 @@
     }
 
     function drawCallback(data) {
+        gameboard = data;
+        drawGameboard(data);
+    }
+
+    function drawGameboard(data) {
         var canvas = document.getElementById('game_board');
-        width = canvas.width = data[0]*bsize;
+        width =  canvas.width = data[0]*bsize;
         height = canvas.height = data[1]*bsize;
         if (canvas.getContext){
             var ctx = canvas.getContext('2d');
 
+            ctx.clearRect(0,0,width*bsize,height*bsize);
+            ctx.beginPath()
             for(x = 0; x < data[2].length; x++)
             {
                 for(y = 0; y < data[2][x].length; y++)
@@ -28,19 +51,19 @@
                     {
                         drawLine(ctx, x*bsize, y*bsize, (x+1)*bsize, y*bsize);
                     }
-
+        
                     // south
                     if ( !data[2][x][y]['s'] )
                     {
                         drawLine(ctx, x*bsize, (y+1)*bsize, (x+1)*bsize, (y+1)*bsize);
                     }
-
+        
                     // east
                     if ( !data[2][x][y]['e'] )
                     {
                         drawLine(ctx, (x+1)*bsize, y*bsize, (x+1)*bsize, (y+1)*bsize);
                     }
-
+        
                     // west
                     if ( !data[2][x][y]['w'] )
                     {
@@ -49,27 +72,21 @@
                 }
             }
             ctx.stroke();
+            ctx.closePath();
         }
     }
 
     function playersCallback(data) {
+
         if(0 == width || 0 == height) return;
 
-        var canvas = document.getElementById('player_board');
-        var game_canvas = document.getElementById('game_board');
+        var canvas = document.getElementById('game_board');
 
-        var rect = game_canvas.getBoundingClientRect();
-
-        canvas.style.position = "absolute";
-        canvas.style.top =  rect.top;
-        canvas.style.left = rect.left;
-
-        canvas.width = width*bsize;
-        canvas.height = height*bsize;
         if (canvas.getContext) {
             var ctx = canvas.getContext('2d');
             ctx.clearRect(0,0,width*bsize,height*bsize);
 
+            drawGameboard(gameboard);
             ctx.beginPath()
             for (i = 0; i < data.length; i++)
             {
@@ -118,59 +135,175 @@
             ctx.stroke();
             ctx.closePath();
         }
+
+        var scores = document.getElementById('scorerow');
+
+        for (i = 0; i < data.length; i++)
+        {
+            var player = data[i];
+            var div = document.getElementById(player.name+"text");
+
+            if ( !div )
+            {
+                // Create the div to show the data
+                var row = document.createElement('div');
+                row.className = 'row playerdata';
+                row.id = player.name;
+                scores.appendChild(row);
+
+                div = document.createElement('div');
+                row.appendChild(div);
+
+                div.className = "col-sm-9";
+                div.id = player.name+"text";
+                div.appendChild(document.createTextNode(player.name));
+
+                // add the code button
+                var div2 = document.createElement('div');
+                row.appendChild(div2);
+
+                div2.className = "col-sm-3";
+                var button = document.createElement('button');
+                button.className = "btn btn-info";
+                button.innerHTML = "Code";
+                button.onclick = function(){
+                    var data = {'player':player.name};
+                    $.post("/code", JSON.stringify(data), show_code);
+                };
+                div2.appendChild(button);
+            }
+
+            player_str = player.name + ":" + player.distance + ":" + player.hitpoints;
+            div.replaceChild(document.createTextNode(player_str), div.childNodes[0]);
+        }
+
+        // Delete any non-existing players
+        for (i = 0; i < $('.playerdata').length; i++)
+        {
+            var found = false;
+            for (j = 0; j < data.length; j++)
+            {
+                if ( $('.playerdata')[i].id == data[j].name )
+                {
+                    found = true; 
+                    break;
+                }
+            }
+            if ( !found )
+            {
+                $('.playerdata')[i].parentElement.removeChild($('.playerdata')[i]);
+            }
+        }
+
+        // Set up for the next call
+        if (play)
+        {
+            setTimeoutCallback();
+        }
     }
 
-    function draw() {
-        $.getJSON("/board", drawCallback);
-        $.getJSON("/players", playersCallback);
+    function reset_game() {
+        $.get("/create_game", drawCallback);
 
-        window.setInterval(function(){
+        var scores = document.getElementById('scorerow');
+        scores.innerHTML = "";
+
+        curr_players = [];
+
+        play = false;
+    }
+
+    function add_player() {
+        $.get("/add_player", playersCallback);
+    }
+
+    function add_rand_player() {
+        $.get("/add_rand_player", playersCallback);
+    }
+
+    function show_code(data) {
+        var code = document.getElementById("robo-code");
+        code.innerHTML = data;
+    }
+
+    var timeout = null;
+
+    function setTimeoutCallback() {
+        if ( timeout )
+        {
+            // This is so we cant have multiple timeout going at one. It gets
+            // confusing otherwise. Things speed up drastically.
+            clearTimeout(timeout);
+        }
+
+        timeout = setTimeout(function() {
             $.get("/step");
             $.getJSON("/players", playersCallback);
-            }, 100)
+            }, 100);
     }
+
+    $(document).ready(function(){
+        // Configure button callbacks. Really? I can't just do this with 
+        // an 'onclick' param?
+        $("#reset_game").click(reset_game);
+        $("#add_player").click(add_player);
+        $("#add_rand_player").click(add_rand_player);
+
+        $('#playButton').click(function () {
+            if ( !play )
+            {
+                play = true;
+                setTimeoutCallback();
+            }
+        });
+        $('#pauseButton').click(function () {
+            play = false;
+        });
+
+    });
     </script>
 
     <style>
-    .main {
-        float: left;
-        display: table;
-    }
-    .row {
-        display: table-row;
+    .pValue
+    {
+        border: 2px solid #a0a0a0;
+        border-radius: 10px;
+        -moz-box-sizing: border-box;
+        -webkit-box-sizing: border-box;
+        box-sizing: border-box;
+        text-align: center;
+        font: bold 28pt Calibri;
     }
 
-    .game {
-        display: table-cell;
-    }
-    .scoreboard {
-        float: left;
-        width: 100px;
-        display: table-cell;
-    }
-.pValue
-{
-    border: 2px solid #a0a0a0;
-    border-radius: 10px;
-    -moz-box-sizing: border-box;
-    -webkit-box-sizing: border-box;
-    box-sizing: border-box;
-    text-align: center;
-    font: bold 28pt Calibri;
-}
     </style>
+</head>
 
-    <body onload="draw();">
-    <div class="main">
-        <div class="row">
-            <div class="game">
-                <canvas class="gameboard" id="game_board" style="z-index: 0;"></canvas>
-                <canvas class="gameboard" id="player_board" style="z-index: 1;"></canvas>
+<body>
+    <div class="container">
+       <div class="row">
+            <div class="col-sm-8">
+                <canvas id="game_board"></canvas>
             </div>
-            <div class="scoreboard">
-                <div class="pValue" style="background: #606060">hello world</div>
+            <div class="col-sm-4" >
+                 <div id="scorerow"></div>
             </div>
         </div>
+        <div class="row">
+            <button id="playButton" type="button" class="btn btn-default">
+                <span class="glyphicon glyphicon-play"></span>
+            </button>
+            <button id="pauseButton" type="button" class="btn btn-default">
+                <span class="glyphicon glyphicon-pause"></span>
+            </button>
+        </div>
+        <div class="row">
+            <button id="reset_game" type="button" class="btn btn-primary">Reset game</button>
+            <button id="add_player" type="button" class="btn btn-primary">Add Player</button>
+            <button id="add_rand_player" type="button" class="btn btn-primary">Add Random Player</button>
+        </div>
+        <div class="row">
+            <pre id="robo-code" class="pre-scrollable"> </pre>
+        </div>
     </div>
-    </body>
-</head>
+</body>
+</html>

@@ -205,6 +205,11 @@ class World(object):
     def add_player(self, name, player):
         self.players.append(WorldPlayerController(self, player, name))
 
+    def find_player(self, name):
+        for p in self.players:
+            if name == p.name:
+                return p.player
+
     def draw(self):
         dir_chars = {
             'n' : '^',

@@ -30,7 +30,7 @@ instruction_map = {
     'RIGHT'         : SimpleInstruction(2),
     'BRANCH_BUMP'   : BranchInstruction(3),
     'CLEAR_BUMP'    : SimpleInstruction(4),
-    'JUMP'          : SimpleInstruction(5),
+    'JUMP'          : BranchInstruction(5),
     'RESET'         : SimpleInstruction(6),
     'FIRE'          : SimpleInstruction(7),
     }
@@ -51,11 +51,8 @@ class Assembler(object):
     def label_handler(self, pieces, offset):
         self.labels[pieces[1]] = offset
 
-    def compile(self, program_file):
+    def compile(self, lines):
         memory = []
-
-        with open(program_file, 'r') as f:
-            lines = f.readlines()
 
         for line in lines:
             line = line.strip()

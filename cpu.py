@@ -141,11 +141,20 @@ class CPU(object):
         self.flags.bump = value
 
     def step(self):
-        if self.PC < 0 or self.PC >= len(self.memory):
+        if self.PC < 0 or \
+            self.PC >= len(self.memory) or \
+            self.memory[self.PC] < 0 or \
+            self.memory[self.PC] >= len(self.instructionset):
+
             self.PC = 0
             self.flags.reset()
 
-        opcode = self.instructionset[self.memory[self.PC]]
+        try:
+            opcode = self.instructionset[self.memory[self.PC]]
+        except:
+            print "PC", self.PC
+            print "memory", self.memory[self.PC]
+            raise
         opcode.step()
         self.inc_PC()
 

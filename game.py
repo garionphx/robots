@@ -6,7 +6,8 @@ import BaseHTTPServer
 
 import world
 import player
-
+import random_player
+import assembler
 
 class Game(object):
     def __init__(self, w = 0, h = 0):
@@ -16,8 +17,12 @@ class Game(object):
         else:
             self.world = world.World(w = w, h = h)
 
+        with open("test.cpu", 'r') as f:
+            lines = f.readlines()
+
         for _ in range(3):
-            self.world.add_player(player.Player("test.cpu", 2))
+            self.world.add_player("Player %d" % (len(self.world.players) + 1), 
+                                  player.Player(lines, 2))
 
     def draw_world(self):
         return self.world.draw()
@@ -27,33 +32,54 @@ class Game(object):
 
 class WebGame(BaseHTTPServer.BaseHTTPRequestHandler):
     def __init__(self, w = 10, h = 10):
-        self.w = w
-        self.h = h
-        self.world = world.World(w = w, h = h)
-
-        for i in range(3):
-            self.world.add_player("Player %d" % i, player.Player("test.cpu", 2))
+        self.world = None
 
         # create the webserver.
         self.server = BaseHTTPServer.HTTPServer(('', 8000), WebGameHandler)
 
+    def createGame(self, w, h):
+        self.w = w
+        self.h = h
+        self.world = world.World(w = w, h = h)
+
+    def addPlayer(self, code, hitpoints):
+        if self.world:
+            self.world.add_player("Player %d" % (len(self.world.players) + 1), 
+                                  player.Player(code, hitpoints))
+
+    def addRandomPlayer(self,  hitpoints):
+        if self.world:
+            self.world.add_player("Random Player %d" % (len(self.world.players) + 1), 
+                                  random_player.RandomPlayer(hitpoints))
+
     def getWorld(self):
-        return self.world.world
+        if self.world:
+            return self.world.world
 
     def getPlayers(self):
-        return self.world.players
+        if self.world:
+            return self.world.players
 
     def step(self):
-        self.world.step()
+        if self.world:
+            self.world.step()
 
 class WebGameHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         self.handlers = {
-            '/' : self.index,
-            '/board' : self.board,
-            '/players' : self.players,
-            '/step' : self.step,
+            '/'             : self.index,
+            '/board'        : self.board,
+            '/players'      : self.players,
+            '/step'         : self.step,
+            '/create_game'  : self.create_game,
+            '/add_player'   : self.add_player,
+            '/add_rand_player'   : self.add_rand_player,
         }
+
+        self.post_handlers = {
+            '/code'         : self.code,
+        }
+
 
         BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
@@ -107,23 +133,57 @@ class WebGameHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        data = (game.w, game.h, game.getWorld())
-        self.wfile.write(self.json_repr(data))
+        if world:
+            data = (game.w, game.h, game.getWorld())
+            self.wfile.write(self.json_repr(data))
 
     def players(self):
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
+        print self.json_repr(game.getPlayers())
         self.wfile.write(self.json_repr(game.getPlayers()))
 
     def step(self):
         game.step()
         self.send_response(200)
-        
+    
+    def create_game(self):
+        game.createGame(15,15)
+        return self.board()
+
+    def add_player(self):
+        with open("test.cpu", 'r') as f:
+            lines = f.readlines()
+
+        game.addPlayer(lines, 2)
+        return self.players()
+
+    def add_rand_player(self):
+        game.addRandomPlayer(2)
+        return self.players()
+
+    def code(self, data):
+        player = game.world.find_player(data['player'])
+        if player:
+            disassem = assembler.Disassembler()
+            data = disassem.disassemble(player.cpu.memory)
+            self.wfile.write(data)
 
     def do_GET(self):
         if self.path in self.handlers:
             return self.handlers[self.path]()
+        else:
+            self.send_response(404)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            self.wfile.write('not found')
+
+    def do_POST(self):
+        if self.path in self.post_handlers:
+            data_string = self.rfile.read(int(self.headers['Content-Length']))
+            data = json.loads(data_string)
+            return self.post_handlers[self.path](data)
         else:
             self.send_response(404)
             self.send_header('Content-type', 'text/html')
@@ -139,15 +199,15 @@ if __name__ == '__main__':
     game.server.serve_forever()
     #print game.draw_world()
 
-    i = 1
-    while 1:
-        #if len(game.world.players) <= 5:
-        #    break
-        time.sleep(.25)
-        game.step()
-        print game.draw_world()
-        if i % 100 == 0:
-            print "Number left:", len(game.world.players), "Iterations:", i
-        i += 1
-
-    print "Game won after", i, "iterations"
+    #i = 1
+    #while 1:
+    #    #if len(game.world.players) <= 5:
+    #    #    break
+    #    time.sleep(.25)
+    #    game.step()
+    #    print game.draw_world()
+    #    if i % 100 == 0:
+    #        print "Number left:", len(game.world.players), "Iterations:", i
+    #    i += 1
+    #
+    #print "Game won after", i, "iterations"
