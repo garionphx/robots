@@ -37,6 +37,8 @@ class WebGame(BaseHTTPServer.BaseHTTPRequestHandler):
         # create the webserver.
         self.server = BaseHTTPServer.HTTPServer(('', 8000), WebGameHandler)
 
+        self.player_count = 0
+
     def createGame(self, w, h):
         self.w = w
         self.h = h
@@ -44,13 +46,15 @@ class WebGame(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def addPlayer(self, code, hitpoints):
         if self.world:
-            self.world.add_player("Player %d" % (len(self.world.players) + 1), 
+            self.world.add_player("Player %d" % self.player_count, 
                                   player.Player(code, hitpoints))
+            self.player_count += 1
 
     def addRandomPlayer(self,  hitpoints):
         if self.world:
-            self.world.add_player("Random Player %d" % (len(self.world.players) + 1), 
+            self.world.add_player("Random Player %d" % self.player_count, 
                                   random_player.RandomPlayer(hitpoints))
+            self.player_count += 1
 
     def getWorld(self):
         if self.world:

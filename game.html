@@ -76,65 +76,18 @@
         }
     }
 
+    function getRandomColor() {
+        var letters = '0123456789ABCDEF';
+        var color = '#';
+        for (var i = 0; i < 6; i++ ) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+
     function playersCallback(data) {
 
         if(0 == width || 0 == height) return;
-
-        var canvas = document.getElementById('game_board');
-
-        if (canvas.getContext) {
-            var ctx = canvas.getContext('2d');
-            ctx.clearRect(0,0,width*bsize,height*bsize);
-
-            drawGameboard(gameboard);
-            ctx.beginPath()
-            for (i = 0; i < data.length; i++)
-            {
-                player = data[i];
-                x = player['x']*bsize;
-                y = player['y']*bsize;
-
-                ctx.strokeRect(x + (bsize/10), y + (bsize/10), bsize * .7, bsize * .7);
-
-                switch(player['dir'])
-                {
-                case 'n':
-                    drawLine(ctx, 
-                             x + midsize, y + midsize, 
-                             x + midsize, y);
-                    drawLine(ctx, 
-                             x + midsize + 1, y + midsize, 
-                             x + midsize + 1, y);
-                    break;
-                case 'e':
-                    drawLine(ctx, 
-                             x + midsize, y + midsize, 
-                             x + bsize, y + midsize);
-                    drawLine(ctx, 
-                             x + midsize, y + midsize + 1, 
-                             x + bsize, y + midsize + 1);
-                    break;
-                case 'w':
-                    drawLine(ctx, 
-                             x + midsize, y + midsize, 
-                             x, y + midsize);
-                    drawLine(ctx, 
-                             x + midsize, y + midsize + 1, 
-                             x, y + midsize + 1);
-                    break;
-                case 's':
-                    drawLine(ctx,
-                             x + midsize, y + midsize, 
-                             x + midsize, y + bsize);
-                    drawLine(ctx,
-                             x + midsize + 1, y + midsize, 
-                             x + midsize + 1, y + bsize);
-                    break;
-                }
-            }
-            ctx.stroke();
-            ctx.closePath();
-        }
 
         var scores = document.getElementById('scorerow');
 
@@ -149,6 +102,7 @@
                 var row = document.createElement('div');
                 row.className = 'row playerdata';
                 row.id = player.name;
+                row.style.color = getRandomColor();
                 scores.appendChild(row);
 
                 div = document.createElement('div');
@@ -193,6 +147,65 @@
             {
                 $('.playerdata')[i].parentElement.removeChild($('.playerdata')[i]);
             }
+        }
+
+        var canvas = document.getElementById('game_board');
+
+        if (canvas.getContext) {
+            var ctx = canvas.getContext('2d');
+            ctx.clearRect(0,0,width*bsize,height*bsize);
+
+            drawGameboard(gameboard);
+            ctx.beginPath()
+            for (i = 0; i < data.length; i++)
+            {
+                player = data[i];
+                x = player['x']*bsize;
+                y = player['y']*bsize;
+
+                var player_div = document.getElementById(player.name);
+                ctx.fillStyle = player_div.style.color;
+                ctx.fillRect(x + (bsize/10), y + (bsize/10), bsize * .7, bsize * .7);
+                ctx.fillStyle = "#000000";
+
+                switch(player['dir'])
+                {
+                case 'n':
+                    drawLine(ctx, 
+                             x + midsize, y + midsize, 
+                             x + midsize, y);
+                    drawLine(ctx, 
+                             x + midsize + 1, y + midsize, 
+                             x + midsize + 1, y);
+                    break;
+                case 'e':
+                    drawLine(ctx, 
+                             x + midsize, y + midsize, 
+                             x + bsize, y + midsize);
+                    drawLine(ctx, 
+                             x + midsize, y + midsize + 1, 
+                             x + bsize, y + midsize + 1);
+                    break;
+                case 'w':
+                    drawLine(ctx, 
+                             x + midsize, y + midsize, 
+                             x, y + midsize);
+                    drawLine(ctx, 
+                             x + midsize, y + midsize + 1, 
+                             x, y + midsize + 1);
+                    break;
+                case 's':
+                    drawLine(ctx,
+                             x + midsize, y + midsize, 
+                             x + midsize, y + bsize);
+                    drawLine(ctx,
+                             x + midsize + 1, y + midsize, 
+                             x + midsize + 1, y + bsize);
+                    break;
+                }
+            }
+            ctx.stroke();
+            ctx.closePath();
         }
 
         // Set up for the next call
