@@ -85,20 +85,15 @@ class WorldPlayerController:
         self.player.step()
 
     def forward(self):
-        curr_dir = self.direction
-        if curr_dir == 'n':
-            new_room = self.pos.room_n
-        elif curr_dir == 'e':
-            new_room = self.pos.room_e
-        elif curr_dir == 's':
-            new_room = self.pos.room_s
-        elif curr_dir == 'w':
-            new_room = self.pos.room_w
-            
+        new_room = { 
+            'n' : self.pos.room_n,
+            's' : self.pos.room_s,
+            'e' : self.pos.room_e,
+            'w' : self.pos.room_w
+            }[self.direction]
+
         # bump detection
-        if not new_room:
-            self.player.bump()
-        elif new_room.player is not None:
+        if not new_room or new_room.player:
             self.player.bump()
         else:
             # Move the player
@@ -126,19 +121,27 @@ class WorldPlayerController:
         self.direction = turn[self.direction]
 
     def fire(self):
-        # get the 'room' we're firing at
-        fire = { 
-            'n' : self.pos.room_n,
-            's' : self.pos.room_s,
-            'e' : self.pos.room_e,
-            'w' : self.pos.room_w
-            }
+        def get_fireroom(room):
+            # get the 'room' we're firing at
+            fire = { 
+                'n' : room.room_n,
+                's' : room.room_s,
+                'e' : room.room_e,
+                'w' : room.room_w
+                }
 
-        fire_room = fire[self.direction]
+            return fire[self.direction]
 
-        if fire_room and fire_room.player is not None:
-            fire_room.player.hit()
-            self.hits += 1
+        fire_room = self.pos
+        while fire_room:
+            # Go to the next room
+            fire_room = get_fireroom(fire_room)
+
+            # Is there something there?
+            if fire_room and fire_room.player is not None:
+                fire_room.player.hit()
+                self.hits += 1
+                break
 
     def hit(self):
         self.player.hit()
@@ -206,9 +209,7 @@ class World(object):
         self.players.append(WorldPlayerController(self, player, name))
 
     def find_player(self, name):
-        for p in self.players:
-            if name == p.name:
-                return p.player
+        return next((player.player for player in self.players if name == player.name), None)
 
     def draw(self):
         dir_chars = {
@@ -264,11 +265,14 @@ class World(object):
         players = copy.copy(self.players)
 
         shuffle(players)
+
         for player in players:
-            # is the player still alive?
             if player.is_alive():
                 player.step()
+        #[player.step() for player in filter(lambda x: x.is_alive(), players)]
 
+        # Delete any dead players
+        #self.players = list(set(self.players) - set(filter(lambda x: not x.is_alive(), players)))
  
 if __name__ == '__main__':
     print(make_maze())

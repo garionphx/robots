@@ -32,7 +32,7 @@ class Flags(object):
 
 
 class OpCode(object):
-    def __init__(self, cycles, func = None):
+    def __init__(self, cycles, func):
         self.func = func
         self.cycles = cycles
 
@@ -43,15 +43,12 @@ class OpCode(object):
         self._data = data
 
     def step(self):
-        # Returns True if the command executed
-
         # Step the cycle_count for this opcode
         self._cycle_count += 1
 
         if self._cycle_count == self.cycles:
             self._cycle_count = 0
-            if self.func:
-                self.func()
+            self.func()
 
 class CPUFault(Exception):
     pass
@@ -73,14 +70,12 @@ class CPU(object):
                                 OpCode(1, self.reset),     
                                 OpCode(1, self.fire),
                               )
+        self.instructionset_length = len(self.instructionset)
 
         self._fire_callback =       None
         self._forward_callback =    None
         self._right_callback =      None
         self._left_callback =       None
-
-    def inc_PC(self):
-        self.PC += 1
 
     def branch_bump(self):
         if self.flags.bump:
@@ -92,6 +87,8 @@ class CPU(object):
 
             # do the jump, but -1 because we'll inc the PC counter when we exit this.
             self.PC += (branch_amount - 1)
+        else:
+            self.PC += 1 # Skip the branch_amount
 
     def clear_bump(self):
         self.flags.bump = False
@@ -141,22 +138,25 @@ class CPU(object):
         self.flags.bump = value
 
     def step(self):
-        if self.PC < 0 or \
-            self.PC >= len(self.memory) or \
-            self.memory[self.PC] < 0 or \
-            self.memory[self.PC] >= len(self.instructionset):
-
-            self.PC = 0
+        PC = self.PC
+        if PC < 0 or PC >= len(self.memory):
+            self.PC = PC = 0
             self.flags.reset()
 
+        memory = self.memory[PC]
+        if memory < 0 or memory >= self.instructionset_length:
+            self.PC = PC = 0
+            self.flags.reset()
+            memory = self.memory[PC]
+
         try:
-            opcode = self.instructionset[self.memory[self.PC]]
+            opcode = self.instructionset[memory]
         except:
             print "PC", self.PC
             print "memory", self.memory[self.PC]
             raise
         opcode.step()
-        self.inc_PC()
+        self.PC += 1
 
 if __name__ == '__main__':
     def forward():
