@@ -64,6 +64,7 @@ class WorldPlayerController:
         self.color = colors[randint(0, len(colors) - 1)]
         self.distance_travelled = 0
         self.hits = 0
+        self.kills = 0
 
         while 1:
             # Pick a random spot in the maze
@@ -130,8 +131,11 @@ class WorldPlayerController:
 
             # Is there something there?
             if fire_room and fire_room.player:
-                fire_room.player.hit()
+                other_player = fire_room.player
+                other_player.hit()
                 self.hits += 1
+                if not other_player.is_alive():
+                    self.kills += 1
                 break
 
     def hit(self):

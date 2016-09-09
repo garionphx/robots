@@ -108,6 +108,7 @@ class WebGameHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                                    'hits' : obj.hits,
                                    'hitpoints': obj.player.hitpoints,
                                    'name': obj.name,
+                                   'kills': obj.kills,
                                    'x' : obj.pos.x,
                                    'y' : obj.pos.y,
                                    'dir' : obj.direction } )
