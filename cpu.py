@@ -36,11 +36,7 @@ class OpCode(object):
         self.func = func
         self.cycles = cycles
 
-        self._data = None
         self._cycle_count = 0
-
-    def set_data(self, data):
-        self._data = data
 
     def step(self):
         # Step the cycle_count for this opcode
@@ -49,6 +45,8 @@ class OpCode(object):
         if self._cycle_count == self.cycles:
             self._cycle_count = 0
             self.func()
+            return True
+        return False
 
 class CPUFault(Exception):
     pass
@@ -59,7 +57,6 @@ class CPU(object):
         self.PC = 0
         self.flags = Flags()
         self.memory = memory
-        self.flag_set = False
 
         self.instructionset = ( OpCode(1, self.forward),
                                 OpCode(1, self.left),      
@@ -150,13 +147,12 @@ class CPU(object):
             memory = self.memory[PC]
 
         try:
-            opcode = self.instructionset[memory]
+            if self.instructionset[memory].step():
+                self.PC += 1
         except:
             print "PC", self.PC
             print "memory", self.memory[self.PC]
             raise
-        opcode.step()
-        self.PC += 1
 
 if __name__ == '__main__':
     def forward():

@@ -99,10 +99,10 @@ class WebGameHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             if isinstance(obj, (bool, int, long, float, basestring)):
                 return obj
             elif isinstance(obj, world.Pos):
-                return serialize( { 'n':obj.room_n is not None,
-                                    'e':obj.room_e is not None,
-                                    'w':obj.room_w is not None,
-                                    's':obj.room_s is not None} )
+                return serialize( { 'n':obj.next_rooms['n'] is not None,
+                                    'e':obj.next_rooms['e'] is not None,
+                                    'w':obj.next_rooms['w'] is not None,
+                                    's':obj.next_rooms['s'] is not None} )
             elif isinstance(obj, world.WorldPlayerController):
                 return serialize( {'distance' : obj.distance_travelled,
                                    'hits' : obj.hits,

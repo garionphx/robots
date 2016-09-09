@@ -40,11 +40,20 @@ class Pos(object):
         self.x = x
         self.y = y
         self.visited = visited
-        self.room_n = None
-        self.room_s = None
-        self.room_e = None
-        self.room_w = None
         self.player = None
+
+        self.next_rooms = {
+            'n' : None,
+            's' : None,
+            'e' : None,
+            'w' : None }
+
+    def set_next_room(self, direction, room):
+        self.next_rooms[direction] = room
+
+    def get_next_room(self, direction):
+        return self.next_rooms[direction]
+
 
 class WorldPlayerController:
     def __init__(self, world, player, name):
@@ -85,12 +94,7 @@ class WorldPlayerController:
         self.player.step()
 
     def forward(self):
-        new_room = { 
-            'n' : self.pos.room_n,
-            's' : self.pos.room_s,
-            'e' : self.pos.room_e,
-            'w' : self.pos.room_w
-            }[self.direction]
+        new_room = self.pos.get_next_room(self.direction)
 
         # bump detection
         if not new_room or new_room.player:
@@ -104,41 +108,28 @@ class WorldPlayerController:
 
             self.distance_travelled += 1
 
+    turn_left = {'n' : 'w',
+                 'w' : 's',
+                 's' : 'e',
+                 'e' : 'n'}
     def left(self):
-        turn = {'n' : 'w',
-                'w' : 's',
-                's' : 'e',
-                'e' : 'n'}
+        self.direction = self.turn_left[self.direction]
 
-        self.direction = turn[self.direction]
-
+    turn_right = {'n' : 'e',
+                  'e' : 's',
+                  's' : 'w',
+                  'w' : 'n'}
     def right(self):
-        turn = {'n' : 'e',
-                'e' : 's',
-                's' : 'w',
-                'w' : 'n'}
-
-        self.direction = turn[self.direction]
+        self.direction = self.turn_right[self.direction]
 
     def fire(self):
-        def get_fireroom(room):
-            # get the 'room' we're firing at
-            fire = { 
-                'n' : room.room_n,
-                's' : room.room_s,
-                'e' : room.room_e,
-                'w' : room.room_w
-                }
-
-            return fire[self.direction]
-
         fire_room = self.pos
         while fire_room:
             # Go to the next room
-            fire_room = get_fireroom(fire_room)
+            fire_room = fire_room.get_next_room(self.direction)
 
             # Is there something there?
-            if fire_room and fire_room.player is not None:
+            if fire_room and fire_room.player:
                 fire_room.player.hit()
                 self.hits += 1
                 break
@@ -181,23 +172,23 @@ class World(object):
                     # We moved N/S
                     if y > yy:
                         # We move N.
-                        vis[x][y].room_n = vis[xx][yy]
-                        vis[xx][yy].room_s = vis[x][y]
+                        vis[x][y].set_next_room('n', vis[xx][yy])
+                        vis[xx][yy].set_next_room('s', vis[x][y])
                     else:
                         # We move S.
-                        vis[x][y].room_s = vis[xx][yy]
-                        vis[xx][yy].room_n = vis[x][y]
+                        vis[x][y].set_next_room('s', vis[xx][yy])
+                        vis[xx][yy].set_next_room('n', vis[x][y])
 
                 if yy == y: 
                     # We moved E/W
                     if x > xx:
                         # We moved W
-                        vis[x][y].room_w = vis[xx][yy]
-                        vis[xx][yy].room_e = vis[x][y]
+                        vis[x][y].set_next_room('w', vis[xx][yy])
+                        vis[xx][yy].set_next_room('e', vis[x][y])
                     else:
                         # We moved E
-                        vis[x][y].room_e = vis[xx][yy]
-                        vis[xx][yy].room_w = vis[x][y]
+                        vis[x][y].set_next_room('e', vis[xx][yy])
+                        vis[xx][yy].set_next_room('w', vis[x][y])
 
                 walk(xx, yy)
 
@@ -227,7 +218,7 @@ class World(object):
             # Line 1, N 
             for x in range(len(row[:-1])):
                 pos = row[x]
-                if pos.room_n is None or (y == 0):
+                if pos.get_next_room('n') is None or (y == 0):
                     s += "+-"
                 else:
                     s += "+ "
@@ -236,7 +227,7 @@ class World(object):
             # Line 2, e, w
             for x in range(len(row[:-1])):
                 pos = row[x]
-                if pos.room_w is None or (x == 0):
+                if pos.get_next_room('w') is None or (x == 0):
                     s += "|"
                 else:
                     s += " "
