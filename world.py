@@ -83,7 +83,7 @@ class WorldPlayerController:
                 self.pos.player = self
                 break
 
-        self.direction = 'n'
+        self.direction = ['n', 's', 'e', 'w'][randint(0,3)]
 
         # Hookup the IO
         self.player.set_forward(self.forward)

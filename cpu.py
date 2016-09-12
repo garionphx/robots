@@ -22,6 +22,7 @@ BRANCH_BUMP <distance>
 JUMP <distance>
 
 """
+import sys
 
 class Flags(object):
     def __init__(self):
@@ -32,21 +33,22 @@ class Flags(object):
 
 
 class OpCode(object):
-    def __init__(self, cycles, func):
+    def __init__(self, cycles, func, extradata_len = 0):
         self.func = func
         self.cycles = cycles
+        self.extradata_len = extradata_len
 
         self._cycle_count = 0
+        self.cpu = None
 
-    def step(self):
+    def step(self, cpu):
         # Step the cycle_count for this opcode
         self._cycle_count += 1
 
         if self._cycle_count == self.cycles:
             self._cycle_count = 0
-            self.func()
+            self.func(cpu)
             return True
-        return False
 
 class CPUFault(Exception):
     pass
@@ -58,15 +60,7 @@ class CPU(object):
         self.flags = Flags()
         self.memory = memory
 
-        self.instructionset = ( OpCode(1, self.forward),
-                                OpCode(1, self.left),      
-                                OpCode(1, self.right),     
-                                OpCode(1, self.branch_bump),
-                                OpCode(1, self.clear_bump),
-                                OpCode(1, self.jump),      
-                                OpCode(1, self.reset),     
-                                OpCode(1, self.fire),
-                              )
+        self.instructionset = instructionset
         self.instructionset_length = len(self.instructionset)
 
         self._fire_callback =       None
@@ -74,10 +68,36 @@ class CPU(object):
         self._right_callback =      None
         self._left_callback =       None
 
+    def validate_mem(self):
+        pc = 0
+        while pc < len(self.memory):
+            pc += 1 + self.instructionset[self.memory[pc]].extradata_len
+
+        # Return the number of bytes needed to make this memory valid
+        return pc - len(self.memory)
+
+    def index_mem(self):
+        if not self.memory:
+            return []
+
+        pc = 0
+        indexes = [0]
+        while pc < len(self.memory):
+            pc += 1 + self.instructionset[self.memory[pc]].extradata_len
+            indexes.append(pc)
+
+        return indexes[:-1]
+
     def branch_bump(self):
         if self.flags.bump:
             # Get the data in the next memory location
-            branch_amount = self.memory[self.PC + 1]
+            try:
+                branch_amount = self.memory[self.PC + 1]
+            except IndexError:
+                print "** EXCEPTION BUMP PC: ", self.PC
+                print "** EXCEPTION BUMP PC + 1: ", self.PC + 1
+                print "** EXCEPTION len: ", len(self.memory)
+                sys.exit()
 
             if branch_amount < -128 or branch_amount > 127:
                 raise CPUFault("branch out of range %d:%d" % (self.PC, branch_amount))
@@ -91,7 +111,13 @@ class CPU(object):
         self.flags.bump = False
 
     def jump(self):
-        branch_amount = self.memory[self.PC + 1]
+        try:
+            branch_amount = self.memory[self.PC + 1]
+        except IndexError:
+            print "** EXCEPTION JUMP PC: ", self.PC
+            print "** EXCEPTION JUMP PC + 1: ", self.PC + 1
+            print "** EXCEPTION len: ", len(self.memory)
+            sys.exit()
 
         if branch_amount < -128 or branch_amount > 127:
             raise CPUFault("branch out of range %d:%d" % (self.PC, branch_amount))
@@ -135,24 +161,38 @@ class CPU(object):
         self.flags.bump = value
 
     def step(self):
-        PC = self.PC
-        if PC < 0 or PC >= len(self.memory):
-            self.PC = PC = 0
+        try:
+            if self.PC < 0:
+                self.PC = 0
+            memory = self.memory[self.PC]
+            opcode = self.instructionset[memory]
+        except IndexError:
+            self.PC = 0
             self.flags.reset()
-
-        memory = self.memory[PC]
-        if memory < 0 or memory >= self.instructionset_length:
-            self.PC = PC = 0
-            self.flags.reset()
-            memory = self.memory[PC]
+            memory = self.memory[self.PC]
+            opcode = self.instructionset[memory]
 
         try:
-            if self.instructionset[memory].step():
+            if opcode.step(self):
                 self.PC += 1
-        except:
+        except Exception, e:
             print "PC", self.PC
             print "memory", self.memory[self.PC]
+            print "memory: ", self.memory
+            print e
             raise
+
+
+instructionset = ( OpCode(1, CPU.forward),
+                   OpCode(1, CPU.left),      
+                   OpCode(1, CPU.right),     
+                   OpCode(1, CPU.branch_bump, 1), # 3
+                   OpCode(1, CPU.clear_bump),
+                   OpCode(1, CPU.jump, 1),        # 5
+                   OpCode(1, CPU.reset),     
+                   OpCode(1, CPU.fire),
+                 )
+
 
 if __name__ == '__main__':
     def forward():
